@@ -1,0 +1,10 @@
+altgraph==0.17.2
+importlib-metadata==4.8.3
+psycopg2==2.9.3
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
+pyinstaller==4.9
+pyinstaller-hooks-contrib==2022.0
+python-ldap==3.4.0
+typing_extensions==4.1.1
+zipp==3.6.0
