@@ -12,24 +12,27 @@ PG-roles will be granted/revoked to/from PG-logins according to LDAP-group membe
 PG-role "ldap" will be created (if not exists) and granted to all created logins. 
 
 # compilation
-To compile this script into single executable, first install prerequisites `sudo apt-get install libsasl2-dev python-dev libldap2-dev libssl-dev zlib1g-dev libpq-dev` (for Debian), then install requirements.txt by running `pip install -r requirements.txt`, then run `pyinstaller --onefile ldap-to-pg.py`. It will create dist folder inside your current directory and place executable there.
+To compile this script into single executable, first install prerequisites:
+`sudo apt install libsasl2-dev python-dev libldap2-dev libssl-dev zlib1g-dev libpq-dev` (for Debian/Ubuntu)
+`sudo yum install postgresql-devel python-devel openldap-devel zlib-devel` (For Centos/RedHat)
+then install requirements.txt by running `pip3 install -r requirements.txt`, then run `pyinstaller --onefile ldap-to-pg.py`. It will create dist folder inside your current directory and place executable there.
 
 # recipe
 
 **Set up PG for LDAP-auth:**
 
-- Add the following line in the beginning of pg_hba.conf:
+- Add the following line in the beginning of pg_hba.conf and edit to suit your environment:
 `host all +ldap 0.0.0.0/0 ldap ldapserver=ldap.sample.com ldapport=636 ldapscheme=ldap ldaptls=1 ldapbasedn="OU=Unit,DC=sample,DC=com" ldapbinddn="CN=ldap search,OU=Users,DC=sample,DC=com" ldapbindpasswd="P@$$w0rd" ldapsearchattribute="sAMAccountName"`
 
-- In case of using self-signed AD certificate, you'll have to pass environment variable LDAPTLS_REQCERT=never to PostgreSQL. You can achieve this by adding a line `Environment="LDAPTLS_REQCERT=never"` to [Service] section of your patroni or postgresql unit-file. You can check, whether it was applied by running `cat /proc/$(ps aux | grep "postgres -D" | grep -v "grep --color=auto" | awk -F " " '{print $2}')/environ`
+- In case of using self-signed AD certificate, you'll have to pass environment variable LDAPTLS_REQCERT=never to PostgreSQL. You can achieve this by adding a line `Environment="LDAPTLS_REQCERT=never"` to [Service] section of your patroni or postgresql unit-file. You can check, whether it was applied by running smth like this `cat /proc/<pid of postgres>/environ`
 
-- Create all necessary groups inside PostgreSQL. I recommend creating read_all_data and write_all_data groups with according permissions, if PG version is 14+, then there already are roles named pg_read_all_data and pg_write_all_data, so no need to create them. Keep treating those like read_all_data and write_all_data in AD-group naming. Synchronizer will automatically prepend pg_ in this case.
+- Create all necessary groups inside PostgreSQL. I recommend creating read_all_data and write_all_data groups with according permissions in PG version <14. If PG version is 14+, then there already are roles named pg_read_all_data and pg_write_all_data. Keep treating those like read_all_data and write_all_data in AD-group naming. Synchronizer will automatically prepend pg_ in this case.
 
 **Set up Active Directory**
 
 - Create an OU to store your LDAP-groups
-- Create necessary groups. I recommend using following naming scheme: servername_pg_rolename, where servername is the name of your PG server or cluster, _pg_ is just a static suffix, so that AD admins would know what these groups are for and rolename - is the rolename in PostgreSQL.
-Example: prodcl1_pg_read_all_data, in this case you can launch program with --group-prefix prodcl1_pg_ and all enabled members of this group will be created in PostgreSQL and granted read_all_data role (pg_read_all_data in case of PG14+). PG-group named "ldap" is always granted to these logins.
+- Create necessary groups. I recommend using following naming scheme: servername_rolename, where servername is the name of your PG server or cluster and rolename - is the rolename in PostgreSQL.
+Example: prodcl1_read_all_data, in this case you can launch program with --group-prefix prodcl1_ and all enabled members of this group will be created in PostgreSQL and granted read_all_data role (pg_read_all_data in case of PG14+). PG-group named "ldap" is always granted to these logins.
 
 **Run ldap-to-pg synchronizer**
 
